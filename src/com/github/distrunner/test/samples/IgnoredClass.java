@@ -1,4 +1,4 @@
-package com.github.distrunner.test;
+package com.github.distrunner.test.samples;
 
 import org.junit.Ignore;
 import org.junit.Test;

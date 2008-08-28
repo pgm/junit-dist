@@ -22,10 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import com.github.distrunner.test.CopyOfSampleTest;
-import com.github.distrunner.test.SampleTest;
-
-public class Manager {
+public class TestRunnerDistributor {
 
 	public static class Task {
 		final String className;
@@ -40,8 +37,19 @@ public class Manager {
 	private final ExecutorService pool;
 	private final ServerSocket serverSocket;
 	private String propertyFilename;
+	private CommandLineBuilder commandLineBuilder;
 	
 	private Set<String> testsInFlight = new HashSet<String>();
+	
+	private int nextInstanceId = 0;
+	
+	protected int getNextInstanceId() {
+		synchronized(this) {
+			int v = nextInstanceId;
+			nextInstanceId++;
+			return v;
+		}
+	}
 	
 	public void logStartTest(String testName) {
 		String tests;
@@ -74,7 +82,7 @@ public class Manager {
 			this.process = process;
 		}
 
-		public void execute(Manager manager, Task task) {
+		public void execute(TestRunnerDistributor manager, Task task) {
 			manager.logStartTest(task.className);
 			
 			try {
@@ -124,7 +132,11 @@ public class Manager {
 		Runtime runtime = Runtime.getRuntime();
 		
 		try { 
-			String [] args = new String[] {System.getProperty("java.home")+"/bin/java", "-cp", System.getProperty("java.class.path"), RunTestWorker.class.getName(), "localhost", Integer.toString(serverSocket.getLocalPort()), propertyFilename };
+			String [] args = commandLineBuilder.buildCommandLine(TestRunnerWorker.class.getName(), 
+					serverSocket.getInetAddress().getHostAddress(), 
+					serverSocket.getLocalPort(), 
+					Collections.singletonList(propertyFilename),
+					getNextInstanceId());
 			Process process = runtime.exec( args );
 			attachStreamMonitor(process, process.getErrorStream());
 			attachStreamMonitor(process, process.getInputStream());
@@ -148,25 +160,8 @@ public class Manager {
 		return w;
 	}
 	
-	/*
-	static class ExecuteTask implements Runnable{
-		Task task;
-		Manager manager;
-
-		public ExecuteTask(Manager manager, Task task){
-			this.manager = manager;
-			this.task = task;
-		}
-		
-		public void run() {
-			RemoteWorker worker = manager.getRemoteWorker();
-			worker.execute(manager, task);
-		}
-	}
-
-*/
 	
-	public Manager(int poolSize) {
+	public TestRunnerDistributor(int poolSize, CommandLineBuilder commandLineBuilder) {
 		try {
 			serverSocket = new ServerSocket(0);
 		} catch (Exception e) {
@@ -174,6 +169,7 @@ public class Manager {
 		}
 
 		pool = Executors.newFixedThreadPool(poolSize);
+		this.commandLineBuilder = commandLineBuilder;
 	}
 	
 	public List<List<Task>> groupTasks(Collection<Task> tasks) {
@@ -231,7 +227,7 @@ public class Manager {
 		for(List<Task> taskGroup : allTasks) {
 
 			final List<Task> myTaskGroup = taskGroup;
-			final Manager myManager = this;
+			final TestRunnerDistributor myManager = this;
 			
 			Future<?> future = pool.submit(new Runnable() {
 				public void run() {
@@ -256,23 +252,14 @@ public class Manager {
 		pool.shutdown();
 	}
 	
-	public static void executeTests(int poolSize, Collection<String> classNames, String outputPrefix) {
+	public static void executeTests(int poolSize, Collection<String> classNames, String outputPrefix, CommandLineBuilder commandLineBuilder) {
 		List<Task> tasks = new ArrayList<Task>();
 		for(String name : classNames) {
 			tasks.add(new Task(name, outputPrefix+name+".xml"));
 		}
 
-		Manager mgr = new Manager(poolSize);
+		TestRunnerDistributor mgr = new TestRunnerDistributor(poolSize, commandLineBuilder);
 		mgr.run(tasks);
 	}
 	
-	public static void main(String[] args) {
-		
-		List<Task> tasks = new ArrayList<Task>();
-		tasks.add(new Task(SampleTest.class.getName(), "sample1.xml"));
-		tasks.add(new Task(CopyOfSampleTest.class.getName(), "sample2.xml"));
-		
-		Manager mgr = new Manager(2);
-		mgr.run(tasks);
-	}
 }

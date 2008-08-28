@@ -7,13 +7,17 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 
-import com.github.distrunner.Manager;
-import com.github.distrunner.Manager.Task;
+import com.github.distrunner.TestRunnerDistributor;
+import com.github.distrunner.TestRunnerWorker;
+import com.github.distrunner.TestRunnerDistributor.Task;
+import com.github.distrunner.test.samples.TestClassAlpha;
+import com.github.distrunner.test.samples.TestClassBeta;
+import com.github.distrunner.test.samples.TestClassGamma;
 
 public class TestBatching {
 	@Test
 	public void testBatching() {
-		Manager mgr = new Manager(3);
+		TestRunnerDistributor mgr = new TestRunnerDistributor(3, TestRunnerWorker.COMMAND_LINE_BUILDER);
 		Task t1 = new Task(TestClassAlpha.class.getName(), "");
 		Task t2 = new Task(TestClassBeta.class.getName(), "");
 		Task t3 = new Task(TestClassGamma.class.getName(), "");

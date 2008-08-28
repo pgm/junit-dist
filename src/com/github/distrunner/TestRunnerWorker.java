@@ -9,11 +9,29 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.junit.runner.JUnitCore;
 
-public class RunTestWorker {
+public class TestRunnerWorker {
+	public static CommandLineBuilder COMMAND_LINE_BUILDER = new CommandLineBuilder() {
+		public String[] buildCommandLine(String className, String hostname,
+				int port, List<String> propertyFiles, int instance) {
+			List<String> args = new ArrayList<String>();
+			
+			args.add(System.getProperty("java.home")+"/bin/java");
+			args.add("-cp");
+			args.add(System.getProperty("java.class.path"));
+			args.add(className);
+			args.add(hostname);
+			args.add(Integer.toString(port));
+			args.addAll(propertyFiles);
+
+			return args.toArray(new String[args.size()]);
+		}
+	};
 
 	public void run(String className, String filename) throws Exception {
 		ClassLoader loader = this.getClass().getClassLoader();
@@ -42,18 +60,33 @@ public class RunTestWorker {
 			System.setErr(originalErr);
 		}
 	}
+
+	public static Properties readProperties(List<String> filenames) throws Exception {
+		Properties props = new Properties();
+		
+		for(String propertyFile : filenames)
+		{
+			FileInputStream fi = new FileInputStream(propertyFile);
+			props.load(fi);
+			fi.close();
+		}
+
+		return props;
+	}
 	
 	public static void main(String args[]) throws Exception{
-		RunTestWorker r = new RunTestWorker();
+		TestRunnerWorker r = new TestRunnerWorker();
+		
 		String target = args[0];
 		int port = Integer.parseInt(args[1]);
-		String propertyFile = args[2];
 
+		List<String> filenames = new ArrayList<String>();
+		for(int i=2;i<args.length;i++) {
+			filenames.add(args[i]);
+		}
+		
 		// replace the current properties with those from the manager
-		FileInputStream fi = new FileInputStream(propertyFile);
-		Properties props = new Properties();
-		props.load(fi);
-		fi.close();
+		Properties props = readProperties(filenames);
 		System.setProperties(props);
 		
 		System.out.println("connecting to "+target+":"+port);

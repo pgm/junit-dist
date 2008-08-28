@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.objectweb.asm.ClassReader;
 
 import com.github.distrunner.AnnotationExtractor;
+import com.github.distrunner.test.samples.IgnoredClass;
 
 public class AnnotationExtractorTest {
 	@Test
